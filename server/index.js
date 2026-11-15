@@ -4,10 +4,15 @@ import path from 'node:path'
 import { createApi } from './api.js'
 
 const api = createApi()
+if (process.env.NODE_ENV === 'production' && !process.env.MONGODB_URI) {
+  throw new Error('Set MONGODB_URI before starting the production server.')
+}
 const root = path.resolve('dist')
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' }
 const server = http.createServer((req, res) => {
   res.setHeader('Referrer-Policy', 'no-referrer')
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-Frame-Options', 'DENY')
   api(req, res, async () => {
     try {
       const pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname)

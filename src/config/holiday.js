@@ -8,14 +8,14 @@ export const holiday = {
   description: 'Count down to Christmas and make a little room for your wishes.',
   announcement: 'A little magic is on its way',
   theme: {
-    background: '#faf7ef', ink: '#233f34', muted: '#686e61', accent: '#a8323d',
-    'accent-dark': '#872531', gold: '#bd9554', paper: '#fffdf7', line: '#e4e3d7',
-    'scene-background': '#e9ecdf', 'tree-color': '#355444', 'ribbon-color': '#dbc191',
+    background: '#fff9ed', ink: '#163d31', muted: '#526259', accent: '#b6313d',
+    'accent-dark': '#942331', gold: '#ebbd62', paper: '#ffffff', line: '#d4dfd5',
+    'scene-background': '#e2eddf', 'tree-color': '#397658', 'ribbon-color': '#ffe2a3',
     'gift-color': '#c29c61',
   },
   hero: {
-    eyebrow: 'The most wonderful time is coming', heading: 'Big magic.', accent: 'Little wishes.',
-    description: 'The twinkly lights. The thoughtful gifts. The joy of a little something, just for you. Let the Christmas wishing begin.',
+    eyebrow: 'The most wonderful time is coming', heading: 'Big joy.', accent: 'Little wishes.',
+    description: 'Save your favorites. Share a few hints. Make someone’s Christmas a little easier.',
     cta: 'Open my wishlist',
   },
   countdown: {

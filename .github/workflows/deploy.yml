@@ -1,0 +1,86 @@
+name: Deploy Wishlist
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wishlist-production
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Check deployment script
+        run: bash -n deploy.sh
+      - name: Validate Docker configuration with example values
+        run: docker compose --env-file deploy/app.env.example -p wishlist-app -f deploy/compose.app.yml config --quiet
+
+  deploy:
+    needs: verify
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER }}
+      SERVER_PORT: ${{ secrets.SERVER_PORT || '22' }}
+      DEPLOY_SHA: ${{ github.sha }}
+    steps:
+      - name: Prepare SSH connection
+        env:
+          SSH_KEY_B64: ${{ secrets.SERVER_SSH_KEY_B64 }}
+          KNOWN_HOSTS: ${{ secrets.SERVER_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          for setting in SERVER_HOST SERVER_USER SSH_KEY_B64 KNOWN_HOSTS; do
+            if [[ -z "${!setting}" ]]; then
+              echo "::error::Missing $setting. See deploy/automation.md."
+              exit 1
+            fi
+          done
+          [[ "$DEPLOY_SHA" =~ ^[a-f0-9]{40}$ ]]
+          umask 077
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s' "$SSH_KEY_B64" | base64 -d > ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy the tested commit
+        run: |
+          set -euo pipefail
+          ssh -T \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$HOME/.ssh/known_hosts" \
+              -o BatchMode=yes \
+              -o IdentitiesOnly=yes \
+              -o ConnectTimeout=15 \
+              -o ServerAliveInterval=15 \
+              -o ServerAliveCountMax=3 \
+              -p "$SERVER_PORT" \
+              -i ~/.ssh/deploy_key \
+              "$SERVER_USER@$SERVER_HOST" \
+              "bash /home/riley-drake/Projects/wishlist/app/deploy.sh '$DEPLOY_SHA'"
+
+      - name: Remove temporary SSH credentials
+        if: always()
+        run: rm -f ~/.ssh/deploy_key ~/.ssh/known_hosts

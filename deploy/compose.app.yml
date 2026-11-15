@@ -1,0 +1,53 @@
+# This runs ONLY the app. It joins the MongoDB network created earlier.
+# Run from the repository root with --env-file deploy/app.env.
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: wishlist-app:${WISHLIST_IMAGE_TAG:-v1}
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      UPLOADS_DIR: /app/uploads
+      MONGODB_URI: ${MONGODB_URI:?Set the app database connection in deploy/app.env}
+      MONGODB_DB: ${MONGODB_DB:-merry_little_wishes}
+    ports:
+      - "127.0.0.1:${WISHLIST_PORT:-3000}:3000"
+    volumes:
+      - uploads:/app/uploads
+    networks:
+      database:
+        aliases:
+          - wishlist-app
+      proxy:
+        aliases:
+          - wishlist-app
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+networks:
+  database:
+    external: true
+    name: ${MONGODB_DOCKER_NETWORK:-wishlist_default}
+  proxy:
+    external: true
+    name: ${PROXY_DOCKER_NETWORK:?Set the Nginx Proxy Manager Docker network in deploy/app.env}
+
+volumes:
+  uploads:
+    name: wishlist_app_uploads

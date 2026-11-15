@@ -1,11 +1,18 @@
 export const draftKey = 'merry-little-wishes:draft:v1'
 export const ownerKey = 'merry-little-wishes:owner:v1'
 
-export async function request(path, { method = 'GET', body, editToken } = {}) {
+// LAN previews use HTTP, where randomUUID may be unavailable on phones.
+export function newItemId() {
+  if (typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
+}
+
+export async function request(path, { method = 'GET', body, editToken, signal } = {}) {
   let response
   try {
     response = await fetch(`/api/lists${path}`, {
       method,
+      signal,
       headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(editToken ? { Authorization: `Bearer ${editToken}` } : {}) },
       ...(body ? { body: JSON.stringify(body) } : {}),
     })
@@ -32,5 +39,5 @@ export function readDraft(legacyKey) {
   const saved = readSaved(draftKey, null)
   if (saved && typeof saved.name === 'string' && Array.isArray(saved.items)) return saved
   const legacy = readSaved(legacyKey, [])
-  return { name: 'My wishlist', items: Array.isArray(legacy) ? legacy.filter(item => typeof item === 'string').map(name => ({ id: crypto.randomUUID(), name, url: '', image: '', price: '', notes: '', priority: 'idea' })) : [] }
+  return { name: 'My wishlist', items: Array.isArray(legacy) ? legacy.filter(item => typeof item === 'string').map(name => ({ id: newItemId(), name, url: '', image: '', price: '', notes: '', priority: 'idea' })) : [] }
 }
